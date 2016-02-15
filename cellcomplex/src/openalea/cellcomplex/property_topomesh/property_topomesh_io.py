@@ -416,7 +416,20 @@ def save_ply_property_topomesh(topomesh,ply_filename,properties_to_save=dict([(0
         print "<-- Saving .ply        [",end_time-start_time,"s]"
 
 
-def read_ply_property_topomesh(ply_filename, verbose = True):
+def mvq(obs, codebook):
+    from scipy.spatial import cKDTree
+    from numpy import array
+    data = cKDTree(obs)
+    res1 = data.query_ball_tree(cKDTree(codebook), 1e-5, 1, 1e-5)
+    res1 = array(res1)[:,0]
+    #print res1
+    #res2 = vq(obs, codebook)[0]
+    #print res2
+    #assert np.array_equal(res1,res2)
+    return res1
+
+
+def read_ply_property_topomesh(ply_filename, verbose = False):
     """
     """
     import re
@@ -540,16 +553,17 @@ def read_ply_property_topomesh(ply_filename, verbose = True):
             face_vertices[fid] = element_properties['face'][fid]['vertex_indices']
 
     timecheck = verbose
+    forcetest = False
 
     if timecheck: check_time =time()
     if verbose: print len(point_positions)," Points, ", len(face_vertices), " Faces"
 
     unique_points = array_unique(np.array(point_positions.values()))
-    if len(unique_points) == len(point_positions):
+    if not forcetest and len(unique_points) == len(point_positions):
         unique_points = np.array(point_positions.values())
         point_matching = array_dict(point_positions.keys(),point_positions.keys())
     else:
-        point_matching = array_dict(vq(np.array(point_positions.values()),unique_points)[0],point_positions.keys())
+        point_matching = array_dict(mvq(np.array(point_positions.values()),unique_points),point_positions.keys())
 
     element_matching['vertex'] = point_matching
     if verbose: print len(unique_points)," Unique Points"
@@ -562,11 +576,11 @@ def read_ply_property_topomesh(ply_filename, verbose = True):
         triangular = True
         triangles = np.sort(point_matching.values(faces))
         unique_triangles = array_unique(triangles)
-        if len(unique_triangles) == len(triangles):
+        if not forcetest and len(unique_triangles) == len(triangles):
             unique_triangles = triangles
             triangle_matching = array_dict(face_vertices.keys(),face_vertices.keys())
         else:
-            triangle_matching = array_dict(vq(triangles,unique_triangles)[0],face_vertices.keys())
+            triangle_matching = array_dict(mvq(triangles,unique_triangles),face_vertices.keys())
     else:
         triangular = False
         unique_triangles = point_matching.values(faces)
@@ -587,10 +601,10 @@ def read_ply_property_topomesh(ply_filename, verbose = True):
         if not 'face_index' in properties['edge']:
             face_edge_vertices = np.sort(np.concatenate([np.transpose([v,list(v[1:])+[v[0]]]) for v in unique_triangles]))
             face_edge_faces = np.concatenate([fid*np.ones_like(unique_triangles[fid]) for fid in xrange(len(unique_triangles))])
-            face_edge_matching = vq(face_edge_vertices,np.sort(edge_vertices.values()))
+            face_edge_matching = mvq(face_edge_vertices,np.sort(edge_vertices.values()))
             for eid in xrange(n_wisps['edge']):
                 edge_faces[eid] = []
-            for eid, fid in zip(face_edge_matching[0], face_edge_faces):
+            for eid, fid in zip(face_edge_matching, face_edge_faces):
                 edge_faces[eid] += [fid]
     else:
         edge_vertices = dict(zip(range(3*len(unique_triangles)),np.sort(np.concatenate([np.transpose([v,list(v[1:])+[v[0]]]) for v in unique_triangles]))))
@@ -598,11 +612,11 @@ def read_ply_property_topomesh(ply_filename, verbose = True):
     if verbose: print len(edge_vertices)," Edges" 
 
     unique_edges = array_unique(np.sort(edge_vertices.values()))
-    if len(unique_edges) == len(edge_vertices.values()):
+    if not forcetest and len(unique_edges) == len(edge_vertices.values()):
         unique_edges = edge_vertices.values()
         edge_matching = array_dict(edge_vertices.keys(),edge_vertices.keys())
     else:
-        edge_matching = array_dict(vq(np.sort(edge_vertices.values()),unique_edges)[0],edge_vertices.keys())
+        edge_matching = array_dict(mvq(np.sort(edge_vertices.values()),unique_edges),edge_vertices.keys())
     element_matching['edge'] = edge_matching
     if verbose: print len(unique_edges)," Unique Edges"
     if timecheck: print 'edge unicity test:',time()-check_time 
