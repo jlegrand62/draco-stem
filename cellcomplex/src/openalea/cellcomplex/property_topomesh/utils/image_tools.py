@@ -812,7 +812,8 @@ def image_to_pgl_mesh(img,sampling=4,cell_coef=1.0,mesh_fineness=1.0,smooth=1.0,
     print "--> Constructing geometry (pGL)"
     scene = pgl.Scene()
     for c in img_mesh.keys():
-        scene += draw_triangular_mesh(img_mesh[c],mesh_id=c,colormap=colormap)
+        #~ scene += draw_triangular_mesh(img_mesh[c],mesh_id=c,colormap=colormap)
+        scene += img_mesh[c]._repr_geom_()
     end_time = time()
     print "<-- Constructing geometry (pGL) [",end_time - start_time,"s]"
     return scene
